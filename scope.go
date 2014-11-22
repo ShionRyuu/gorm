@@ -24,6 +24,7 @@ type Scope struct {
 	fields          map[string]*Field
 }
 
+// 获取并缓存Scope指向的实际的值
 func (scope *Scope) IndirectValue() reflect.Value {
 	if scope.indirectValue == nil {
 		value := reflect.Indirect(reflect.ValueOf(scope.Value))
@@ -34,10 +35,6 @@ func (scope *Scope) IndirectValue() reflect.Value {
 
 // NewScope create scope for callbacks, including DB's search information
 func (db *DB) NewScope(value interface{}) *Scope {
-	// reflectKind := reflect.ValueOf(value).Kind()
-	// if !((reflectKind == reflect.Invalid) || (reflectKind == reflect.Ptr)) {
-	// 	fmt.Printf("%v %v\n", fileWithLineNum(), "using unaddressable value")
-	// }
 	db.Value = value
 	return &Scope{db: db, Search: db.search, Value: value}
 }
@@ -90,10 +87,14 @@ func (scope *Scope) HasError() bool {
 	return scope.db.Error != nil
 }
 
+// 获取主键对应的*Field
 func (scope *Scope) PrimaryKeyField() *Field {
 	if scope.primaryKeyField == nil {
 		var indirectValue = scope.IndirectValue()
 
+		// Slice需要取到实际元素。。。
+		// IndirectValue().Type().Elem() ->
+		//
 		clone := scope
 		if indirectValue.Kind() == reflect.Slice {
 			clone = scope.New(reflect.New(indirectValue.Type().Elem()).Elem().Interface())
@@ -127,7 +128,7 @@ func (scope *Scope) PrimaryKeyZero() bool {
 // PrimaryKeyValue get the primary key's value
 func (scope *Scope) PrimaryKeyValue() interface{} {
 	if field := scope.PrimaryKeyField(); field != nil {
-		return field.Field.Interface()
+		return field.Field.Interface() // 将主键的值以interface{}返回
 	} else {
 		return 0
 	}
@@ -141,8 +142,10 @@ func (scope *Scope) HasColumn(column string) (hasColumn bool) {
 		clone = scope.New(value)
 	}
 
+	//
 	dbName := ToSnake(column)
 
+	// 判断是否存在dbName的字段
 	_, hasColumn = clone.Fields(false)[dbName]
 
 	return

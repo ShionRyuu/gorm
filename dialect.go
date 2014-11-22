@@ -8,6 +8,7 @@ import (
 
 var timeType = reflect.TypeOf(time.Time{})
 
+// 方言：将不同数据类型、SQL语法转换成关系数据库的统一的格式
 type Dialect interface {
 	BinVar(i int) string
 	SupportLastInsertId() bool
