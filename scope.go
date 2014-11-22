@@ -11,17 +11,18 @@ import (
 	"regexp"
 )
 
+//
 type Scope struct {
-	Value           interface{}
-	indirectValue   *reflect.Value
-	Search          *search
-	Sql             string
-	SqlVars         []interface{}
-	db              *DB
-	skipLeft        bool
-	primaryKeyField *Field
-	instanceId      string
-	fields          map[string]*Field
+	Value           interface{}       //
+	indirectValue   *reflect.Value    // Scope指向的实际的值
+	Search          *search           // 查找信息
+	Sql             string            //
+	SqlVars         []interface{}     //
+	db              *DB               //
+	skipLeft        bool              //
+	primaryKeyField *Field            // 主键Field
+	instanceId      string            //
+	fields          map[string]*Field //
 }
 
 // 获取并缓存Scope指向的实际的值
@@ -60,16 +61,18 @@ func (scope *Scope) SkipLeft() {
 }
 
 // Quote used to quote database column name according to database dialect
+// 根据Dialect（方言） 转义数据库列名
 func (scope *Scope) Quote(str string) string {
 	return scope.Dialect().Quote(str)
 }
 
 // Dialect get dialect
+// 获取Dialect（方言）
 func (scope *Scope) Dialect() Dialect {
 	return scope.db.parent.dialect
 }
 
-// Err write error
+// 设置数据库执行错误
 func (scope *Scope) Err(err error) error {
 	if err != nil {
 		scope.db.err(err)
@@ -77,12 +80,12 @@ func (scope *Scope) Err(err error) error {
 	return err
 }
 
-// Log print log message
+// 打印日志信息
 func (scope *Scope) Log(v ...interface{}) {
 	scope.db.log(v...)
 }
 
-// HasError check if there are any error
+// 检查是否数据库执行出错
 func (scope *Scope) HasError() bool {
 	return scope.db.Error != nil
 }
@@ -111,7 +114,7 @@ func (scope *Scope) PrimaryKeyField() *Field {
 	return scope.primaryKeyField
 }
 
-// PrimaryKey get the primary key's column name
+// 获取主键的列名
 func (scope *Scope) PrimaryKey() string {
 	if field := scope.PrimaryKeyField(); field != nil {
 		return field.DBName
@@ -120,12 +123,13 @@ func (scope *Scope) PrimaryKey() string {
 	}
 }
 
-// PrimaryKeyZero check the primary key is blank or not
+// 判断主键是否为空
 func (scope *Scope) PrimaryKeyZero() bool {
+	// reflect.ValueOf
 	return isBlank(reflect.ValueOf(scope.PrimaryKeyValue()))
 }
 
-// PrimaryKeyValue get the primary key's value
+// 获取主键的值
 func (scope *Scope) PrimaryKeyValue() interface{} {
 	if field := scope.PrimaryKeyField(); field != nil {
 		return field.Field.Interface() // 将主键的值以interface{}返回
@@ -175,6 +179,7 @@ func (scope *Scope) SetColumn(column interface{}, value interface{}) error {
 }
 
 // CallMethod invoke method with necessary argument
+// 调用指定名字的方法
 func (scope *Scope) CallMethod(name string) {
 	if scope.Value == nil {
 		return
@@ -203,6 +208,8 @@ func (scope *Scope) CallMethod(name string) {
 
 	if values := scope.IndirectValue(); values.Kind() == reflect.Slice {
 		for i := 0; i < values.Len(); i++ {
+			// Index(i) 获取Slice等的第i个元素
+			// Addr().Interface()
 			call(values.Index(i).Addr().Interface())
 		}
 	} else {
@@ -260,6 +267,7 @@ func (scope *Scope) TableName() string {
 	}
 }
 
+// 获取引用(``)表名
 func (scope *Scope) QuotedTableName() string {
 	if scope.Search != nil && len(scope.Search.TableName) > 0 {
 		return scope.Search.TableName
@@ -273,11 +281,13 @@ func (scope *Scope) QuotedTableName() string {
 }
 
 // CombinedConditionSql get combined condition sql
+// 构造条件查找的SQL语句
 func (scope *Scope) CombinedConditionSql() string {
 	return scope.joinsSql() + scope.whereSql() + scope.groupSql() +
 		scope.havingSql() + scope.orderSql() + scope.limitSql() + scope.offsetSql()
 }
 
+// 获取指定名字的Field
 func (scope *Scope) FieldByName(name string) (field *Field, ok bool) {
 	for _, field := range scope.Fields() {
 		if field.Name == name {
@@ -460,11 +470,11 @@ func (scope *Scope) Raw(sql string) *Scope {
 
 // Exec invoke sql
 func (scope *Scope) Exec() *Scope {
-	defer scope.Trace(NowFunc())
+	defer scope.Trace(NowFunc()) // 日志
 
 	if !scope.HasError() {
 		result, err := scope.DB().Exec(scope.Sql, scope.SqlVars...)
-		if scope.Err(err) == nil {
+		if scope.Err(err) == nil { // 如果没有错误，获取并设置影响的行数
 			if count, err := result.RowsAffected(); err == nil {
 				scope.db.RowsAffected = count
 			}
@@ -492,10 +502,12 @@ func (scope *Scope) InstanceId() string {
 	return scope.instanceId
 }
 
+// 设置跟InstanceId相关的变量
 func (scope *Scope) InstanceSet(name string, value interface{}) *Scope {
 	return scope.Set(name+scope.InstanceId(), value)
 }
 
+// 获取跟InstanceId相关的变量
 func (scope *Scope) InstanceGet(name string) (interface{}, bool) {
 	return scope.Get(name + scope.InstanceId())
 }
@@ -511,7 +523,9 @@ func (scope *Scope) Trace(t time.Time) {
 func (scope *Scope) Begin() *Scope {
 	if db, ok := scope.DB().(sqlDb); ok {
 		if tx, err := db.Begin(); err == nil {
+			//
 			scope.db.db = interface{}(tx).(sqlCommon)
+			//
 			scope.InstanceSet("gorm:started_transaction", true)
 		}
 	}
