@@ -280,8 +280,7 @@ func (scope *Scope) QuotedTableName() string {
 	}
 }
 
-// CombinedConditionSql get combined condition sql
-// 构造条件查找的SQL语句
+// 构造组合条件查找的SQL语句
 func (scope *Scope) CombinedConditionSql() string {
 	return scope.joinsSql() + scope.whereSql() + scope.groupSql() +
 		scope.havingSql() + scope.orderSql() + scope.limitSql() + scope.offsetSql()
@@ -301,7 +300,10 @@ func (scope *Scope) fieldFromStruct(fieldStruct reflect.StructField, withRelatio
 	var field Field
 	field.Name = fieldStruct.Name
 
+	// 字段的真实值
+	// FieldByName
 	value := scope.IndirectValue().FieldByName(fieldStruct.Name)
+	// reflect.Indirect
 	indirectValue := reflect.Indirect(value)
 	field.Field = value
 	field.IsBlank = isBlank(value)
@@ -312,22 +314,28 @@ func (scope *Scope) fieldFromStruct(fieldStruct reflect.StructField, withRelatio
 		field.IsPrimaryKey = true
 	}
 
+	// sql默认值
 	if def, ok := parseTagSetting(fieldStruct.Tag.Get("sql"))["DEFAULT"]; ok {
 		field.DefaultValue = def
 	}
 
+	// 保存标签
 	field.Tag = fieldStruct.Tag
 
+	// 是否有特殊指定列名
 	if value, ok := settings["COLUMN"]; ok {
 		field.DBName = value
 	} else {
 		field.DBName = ToSnake(fieldStruct.Name)
 	}
 
+	// 数据库系统特定标签
 	tagIdentifier := "sql"
 	if scope.db != nil {
 		tagIdentifier = scope.db.parent.tagIdentifier
 	}
+
+	// 判断字段是否忽略
 	if fieldStruct.Tag.Get(tagIdentifier) == "-" {
 		field.IsIgnored = true
 	}
@@ -345,18 +353,19 @@ func (scope *Scope) fieldFromStruct(fieldStruct reflect.StructField, withRelatio
 		many2many := settings["MANY2MANY"]
 
 		switch indirectValue.Kind() {
-		case reflect.Slice:
+		case reflect.Slice: // 字段是Slice
 			typ = typ.Elem()
 
-			if (typ.Kind() == reflect.Struct) && withRelation {
-				if foreignKey == "" {
+			if (typ.Kind() == reflect.Struct) && withRelation { // 结构体Slice 且 保持关联
+				if foreignKey == "" { // 默认外键 结构体名+"Id"
 					foreignKey = scopeTyp.Name() + "Id"
 				}
-				if associationForeignKey == "" {
+				if associationForeignKey == "" { // 默认关联外键 元素类型名+"Id"
 					associationForeignKey = typ.Name() + "Id"
 				}
 
 				// if not many to many, foreign key could be null
+				// 非多对多关系，外键不能为空，默认""
 				if many2many == "" {
 					if !reflect.New(typ).Elem().FieldByName(foreignKey).IsValid() {
 						foreignKey = ""
@@ -376,12 +385,12 @@ func (scope *Scope) fieldFromStruct(fieldStruct reflect.StructField, withRelatio
 			} else {
 				field.IsNormal = true
 			}
-		case reflect.Struct:
+		case reflect.Struct: // 字段是结构体（Struct）
 			if field.IsTime() || field.IsScanner() {
 				field.IsNormal = true
-			} else if _, ok := settings["EMBEDDED"]; ok || fieldStruct.Anonymous {
+			} else if _, ok := settings["EMBEDDED"]; ok || fieldStruct.Anonymous { // 匿名字段 或 EMBEDDED（嵌套）字段
 				var fields []*Field
-				if field.Field.CanAddr() {
+				if field.Field.CanAddr() { // 可寻址？？  递归获取
 					for _, field := range scope.New(field.Field.Addr().Interface()).Fields() {
 						field.DBName = field.DBName
 						fields = append(fields, field)
@@ -391,14 +400,15 @@ func (scope *Scope) fieldFromStruct(fieldStruct reflect.StructField, withRelatio
 			} else if withRelation {
 				var belongsToForeignKey, hasOneForeignKey, kind string
 
-				if foreignKey == "" {
-					belongsToForeignKey = field.Name + "Id"
-					hasOneForeignKey = scopeTyp.Name() + "Id"
+				if foreignKey == "" { // 没有指定外键
+					belongsToForeignKey = field.Name + "Id"   // belongs to关系外键：元素类型名+"Id"
+					hasOneForeignKey = scopeTyp.Name() + "Id" // has one关系外键：结构体名+"Id"
 				} else {
 					belongsToForeignKey = foreignKey
 					hasOneForeignKey = foreignKey
 				}
 
+				// belongs to, has one关系区别？？
 				if scope.HasColumn(belongsToForeignKey) {
 					foreignKey = belongsToForeignKey
 					kind = "belongs_to"
@@ -424,19 +434,20 @@ func (scope *Scope) Fields(noRelations ...bool) map[string]*Field {
 	var withRelation = len(noRelations) == 0
 
 	var fields = map[string]*Field{}
+	//
 	if scope.IndirectValue().IsValid() && scope.IndirectValue().Kind() == reflect.Struct {
 		scopeTyp := scope.IndirectValue().Type()
 		var hasPrimaryKey = false
 		for i := 0; i < scopeTyp.NumField(); i++ {
-			fieldStruct := scopeTyp.Field(i)
-			if !ast.IsExported(fieldStruct.Name) {
+			fieldStruct := scopeTyp.Field(i)       // 取第i个字段
+			if !ast.IsExported(fieldStruct.Name) { // 字段未导出
 				continue
 			}
 			for _, field := range scope.fieldFromStruct(fieldStruct, withRelation) {
 				if field.IsPrimaryKey {
 					hasPrimaryKey = true
 				}
-				if value, ok := fields[field.DBName]; ok {
+				if value, ok := fields[field.DBName]; ok { // 判断是否已经设置，防止相同的列名
 					if value.IsIgnored {
 						fields[field.DBName] = field
 					} else if !value.IsIgnored {
@@ -483,13 +494,13 @@ func (scope *Scope) Exec() *Scope {
 	return scope
 }
 
-// Set set value by name
+// 设置变量
 func (scope *Scope) Set(name string, value interface{}) *Scope {
 	scope.db.InstantSet(name, value)
 	return scope
 }
 
-// Get get value by name
+// 获取变量
 func (scope *Scope) Get(name string) (interface{}, bool) {
 	return scope.db.Get(name)
 }
@@ -519,23 +530,23 @@ func (scope *Scope) Trace(t time.Time) {
 	}
 }
 
-// Begin start a transaction
+// 开始事务    一个完整的支持事务需要实现sqlCommon, sqlTx, sqlDb三个接口
 func (scope *Scope) Begin() *Scope {
 	if db, ok := scope.DB().(sqlDb); ok {
 		if tx, err := db.Begin(); err == nil {
 			//
 			scope.db.db = interface{}(tx).(sqlCommon)
-			//
+			// 事务标记
 			scope.InstanceSet("gorm:started_transaction", true)
 		}
 	}
 	return scope
 }
 
-// CommitOrRollback commit current transaction if there is no error, otherwise rollback it
+// 出错回滚否则提交事务
 func (scope *Scope) CommitOrRollback() *Scope {
 	if _, ok := scope.InstanceGet("gorm:started_transaction"); ok {
-		if db, ok := scope.db.db.(sqlTx); ok {
+		if db, ok := scope.db.db.(sqlTx); ok { // 实现了sqlTx接口
 			if scope.HasError() {
 				db.Rollback()
 			} else {

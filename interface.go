@@ -9,10 +9,12 @@ type sqlCommon interface {
 	QueryRow(query string, args ...interface{}) *sql.Row
 }
 
+// 事务接口
 type sqlDb interface {
 	Begin() (*sql.Tx, error)
 }
 
+// 事务接口
 type sqlTx interface {
 	Commit() error
 	Rollback() error
