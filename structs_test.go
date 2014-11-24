@@ -22,7 +22,7 @@ type User struct {
 	BillingAddressId  sql.NullInt64 // Embedded struct's foreign key
 	ShippingAddress   Address       // Embedded struct
 	ShippingAddressId int64         // Embedded struct's foreign key
-	CreditCard        CreditCard
+	CreditCard        CreditCard    // has one，外键位于CreditCard: UserId
 	Latitude          float64
 	Languages         []Language `gorm:"many2many:user_languages;"`
 	CompanyId         int64
@@ -38,7 +38,7 @@ type User struct {
 type CreditCard struct {
 	Id        int8
 	Number    string
-	UserId    sql.NullInt64
+	UserId    sql.NullInt64 //
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt time.Time
@@ -136,13 +136,13 @@ type Animal struct {
 
 type Post struct {
 	Id             int64
-	CategoryId     sql.NullInt64
+	CategoryId     sql.NullInt64 // 外键
 	MainCategoryId int64
 	Title          string
 	Body           string
-	Comments       []Comment
-	Category       Category
-	MainCategory   Category
+	Comments       []Comment // has_many 关系
+	Category       Category  // belongs to 关系，外键 元素名+"Id"
+	MainCategory   Category  // belongs to 关系，外键 元素名+"Id"
 }
 
 type Category struct {

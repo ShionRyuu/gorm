@@ -11,7 +11,7 @@ import (
 	"regexp"
 )
 
-//
+// SQL 作用域，存放一个特定场景（可能有多个SQL操作）的数据
 type Scope struct {
 	Value           interface{}       //
 	indirectValue   *reflect.Value    // Scope指向的实际的值
@@ -401,14 +401,14 @@ func (scope *Scope) fieldFromStruct(fieldStruct reflect.StructField, withRelatio
 				var belongsToForeignKey, hasOneForeignKey, kind string
 
 				if foreignKey == "" { // 没有指定外键
-					belongsToForeignKey = field.Name + "Id"   // belongs to关系外键：元素类型名+"Id"
-					hasOneForeignKey = scopeTyp.Name() + "Id" // has one关系外键：结构体名+"Id"
+					belongsToForeignKey = field.Name + "Id"   // belongs to关系外键: 元素名+"Id"，外键位于本结构体
+					hasOneForeignKey = scopeTyp.Name() + "Id" // has one关系外键: 结构体名+"Id"，外键位于字段类型的结构体
 				} else {
 					belongsToForeignKey = foreignKey
 					hasOneForeignKey = foreignKey
 				}
 
-				// belongs to, has one关系区别？？
+				// belongs to, has one关系区别：外键存放的位置，设置的顺序不同
 				if scope.HasColumn(belongsToForeignKey) {
 					foreignKey = belongsToForeignKey
 					kind = "belongs_to"

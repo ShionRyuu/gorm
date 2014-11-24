@@ -3,10 +3,12 @@ package gorm_test
 import "testing"
 
 func TestHasOneAndHasManyAssociation(t *testing.T) {
+	// 删除表，结构体类型定义见structs_test.go
 	DB.DropTable(Category{})
 	DB.DropTable(Post{})
 	DB.DropTable(Comment{})
 
+	// 创建表
 	DB.CreateTable(Category{})
 	DB.CreateTable(Post{})
 	DB.CreateTable(Comment{})
@@ -23,6 +25,7 @@ func TestHasOneAndHasManyAssociation(t *testing.T) {
 		t.Errorf("Got errors when save post")
 	}
 
+	// Category表查找name为"Category 1"的行
 	if DB.First(&Category{}, "name = ?", "Category 1").Error != nil {
 		t.Errorf("Category should be saved")
 	}
@@ -30,13 +33,17 @@ func TestHasOneAndHasManyAssociation(t *testing.T) {
 	var p Post
 	DB.First(&p, post.Id)
 
+	// 插入以后会更新原始数据的外键
 	if post.CategoryId.Int64 == 0 || p.CategoryId.Int64 == 0 || post.MainCategoryId == 0 || p.MainCategoryId == 0 {
 		t.Errorf("Category Id should exist")
 	}
 
+	//查找content等于"Comment 1"的字段
 	if DB.First(&Comment{}, "content = ?", "Comment 1").Error != nil {
 		t.Errorf("Comment 1 should be saved")
 	}
+
+	// 插入以后会更新原始数据的外键
 	if post.Comments[0].PostId == 0 {
 		t.Errorf("Comment Should have post id")
 	}
@@ -78,6 +85,7 @@ func TestRelated(t *testing.T) {
 	}
 
 	var emails []Email
+	//
 	DB.Model(&user).Related(&emails)
 	if len(emails) != 2 {
 		t.Errorf("Should have two emails")
