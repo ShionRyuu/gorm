@@ -2,11 +2,12 @@ package gorm
 
 import "fmt"
 
+// 查找结构，条件SQL构造位于。。。
 type search struct {
 	db              *DB
-	WhereConditions []map[string]interface{}
-	OrConditions    []map[string]interface{}
-	NotConditions   []map[string]interface{}
+	WhereConditions []map[string]interface{} // Where查找参数
+	OrConditions    []map[string]interface{} // Or查找参数
+	NotConditions   []map[string]interface{} // Where查找参数
 	InitAttrs       []interface{}
 	AssignAttrs     []interface{}
 	HavingCondition map[string]interface{}
@@ -21,6 +22,8 @@ type search struct {
 	Raw             bool
 }
 
+// 克隆search结构，(*DB).clone方法会调用该方法
+// 克隆是因为不让一个查找操作影响到其它查找操作
 func (s *search) clone() *search {
 	return &search{
 		WhereConditions: s.WhereConditions,

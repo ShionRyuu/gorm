@@ -5,13 +5,16 @@ import (
 	"time"
 )
 
+// 克隆DB结构，xx情况下需要克隆，xx情况下需要一个新Scope
 func (s *DB) clone() *DB {
 	db := DB{db: s.db, parent: s.parent, logMode: s.logMode, Value: s.Value, Error: s.Error, values: map[string]interface{}{}}
 
+	// 克隆values
 	for key, value := range s.values {
 		db.values[key] = value
 	}
 
+	// 克隆查找条件
 	if s.search == nil {
 		db.search = &search{}
 	} else {

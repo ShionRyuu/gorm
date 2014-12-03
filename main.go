@@ -19,20 +19,20 @@ var NowFunc = func() time.Time {
 }
 
 type DB struct {
-	Value         interface{}
-	Error         error
-	RowsAffected  int64
-	callback      *callback
-	db            sqlCommon
-	parent        *DB
-	search        *search
-	logMode       int
-	logger        logger
-	dialect       Dialect
-	tagIdentifier string
-	singularTable bool
-	source        string
-	values        map[string]interface{}
+	Value         interface{}            //
+	Error         error                  // SQL错误
+	RowsAffected  int64                  // SQL操作影响的行数
+	callback      *callback              //
+	db            sqlCommon              // DB的指针
+	parent        *DB                    // 原始DB的指针
+	search        *search                //
+	logMode       int                    //
+	logger        logger                 // 日志实例
+	dialect       Dialect                // 方言
+	tagIdentifier string                 // 标签
+	singularTable bool                   //
+	source        string                 //
+	values        map[string]interface{} // 设置
 }
 
 func Open(dialect string, args ...interface{}) (DB, error) {
@@ -69,10 +69,12 @@ func Open(dialect string, args ...interface{}) (DB, error) {
 	return db, err
 }
 
+// 关闭数据库
 func (s *DB) Close() error {
 	return s.parent.db.(*sql.DB).Close()
 }
 
+// 将db以*sql.DB接口返回
 func (s *DB) DB() *sql.DB {
 	return s.db.(*sql.DB)
 }
@@ -93,6 +95,7 @@ func (s *DB) SetTagIdentifier(str string) {
 	s.parent.tagIdentifier = str
 }
 
+// 设置日志实例
 func (s *DB) SetLogger(l logger) {
 	s.parent.logger = l
 }
@@ -106,6 +109,7 @@ func (s *DB) LogMode(b bool) *DB {
 	return s
 }
 
+//
 func (s *DB) SingularTable(b bool) {
 	s.parent.singularTable = b
 }
@@ -154,6 +158,7 @@ func (s *DB) Includes(value interface{}) *DB {
 	return s.clone().search.includes(value).db
 }
 
+//
 func (s *DB) Scopes(funcs ...func(*DB) *DB) *DB {
 	c := s
 	for _, f := range funcs {
@@ -276,6 +281,7 @@ func (s *DB) Delete(value interface{}, where ...interface{}) *DB {
 	return s.clone().NewScope(value).inlineCondition(where...).callCallbacks(s.parent.callback.deletes).db
 }
 
+// 直接执行SQL语句
 func (s *DB) Raw(sql string, values ...interface{}) *DB {
 	return s.clone().search.raw(true).where(sql, values...).db
 }
@@ -312,6 +318,7 @@ func (s *DB) Debug() *DB {
 	return s.clone().LogMode(true)
 }
 
+// 开始事务，db需支持sqlDb接口
 func (s *DB) Begin() *DB {
 	c := s.clone()
 	if db, ok := c.db.(sqlDb); ok {
@@ -324,8 +331,9 @@ func (s *DB) Begin() *DB {
 	return c
 }
 
+// 提交事务，db需支持sqlTx接口
 func (s *DB) Commit() *DB {
-	if db, ok := s.db.(sqlTx); ok {
+	if db, ok := s.db.(sqlTx接口); ok {
 		s.err(db.Commit())
 	} else {
 		s.err(NoValidTransaction)
@@ -333,6 +341,7 @@ func (s *DB) Commit() *DB {
 	return s
 }
 
+// 回滚事务，db需支持sqlTx接口
 func (s *DB) Rollback() *DB {
 	if db, ok := s.db.(sqlTx); ok {
 		s.err(db.Rollback())
