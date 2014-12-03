@@ -2,6 +2,8 @@
 
 The fantastic ORM library for Golang, aims to be developer friendly.
 
+[![wercker status](https://app.wercker.com/status/0cb7bb1039e21b74f8274941428e0921/s/master "wercker status")](https://app.wercker.com/project/bykey/0cb7bb1039e21b74f8274941428e0921)
+
 ## Overview
 
 * Chainable API
@@ -15,6 +17,7 @@ The fantastic ORM library for Golang, aims to be developer friendly.
 * Iteration Support via [Rows](#row--rows)
 * Scopes
 * sql.Scanner support
+* Polymorphism
 * Every feature comes with tests
 * Convention Over Configuration
 * Developer Friendly
@@ -103,6 +106,10 @@ import (
 db, err := gorm.Open("postgres", "user=gorm dbname=gorm sslmode=disable")
 // db, err := gorm.Open("mysql", "user:password@/dbname?charset=utf8&parseTime=True")
 // db, err := gorm.Open("sqlite3", "/tmp/gorm.db")
+
+// You can also use an existing database connection handle
+// dbSql, _ := sql.Open("postgres", "user=gorm dbname=gorm sslmode=disable")
+// db := gorm.Open("postgres", dbSql)
 
 // Get database connection handle [*sql.DB](http://golang.org/pkg/database/sql/#DB)
 db.DB()
@@ -500,6 +507,32 @@ db.Model(&user).Association("Languages").Count()
 db.Model(&user).Association("Languages").Clear()
 // Remove all relations between the user and languages
 ```
+
+### Polymorphism
+
+Supports polymorphic has-many and has-one associations.
+
+```go
+  type Cat struct {
+    Id    int
+    Name  string
+    Toy   Toy `gorm:"polymorphic:Owner;"`
+  }
+
+  type Dog struct {
+    Id   int
+    Name string
+    Toy  Toy `gorm:"polymorphic:Owner;"`
+  }
+
+  type Toy struct {
+    Id        int
+    Name      string
+    OwnerId   int
+    OwnerType int
+  }
+```
+Note: polymorphic belongs-to and many-to-many are explicitly NOT supported, and will throw errors.
 
 ## Advanced Usage
 

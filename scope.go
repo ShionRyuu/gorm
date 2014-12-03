@@ -40,6 +40,16 @@ func (db *DB) NewScope(value interface{}) *Scope {
 	return &Scope{db: db, Search: db.search, Value: value}
 }
 
+func (scope *Scope) NeedPtr() *Scope {
+	reflectKind := reflect.ValueOf(scope.Value).Kind()
+	if !((reflectKind == reflect.Invalid) || (reflectKind == reflect.Ptr)) {
+		err := errors.New(fmt.Sprintf("%v %v\n", fileWithLineNum(), "using unaddressable value"))
+		scope.Err(err)
+		fmt.Printf(err.Error())
+	}
+	return scope
+}
+
 // New create a new Scope without search information
 func (scope *Scope) New(value interface{}) *Scope {
 	return &Scope{db: scope.db, Search: &search{}, Value: value}
@@ -349,8 +359,15 @@ func (scope *Scope) fieldFromStruct(fieldStruct reflect.StructField, withRelatio
 		scopeTyp := scope.IndirectValue().Type()
 
 		foreignKey := SnakeToUpperCamel(settings["FOREIGNKEY"])
+		foreignType := SnakeToUpperCamel(settings["FOREIGNTYPE"])
 		associationForeignKey := SnakeToUpperCamel(settings["ASSOCIATIONFOREIGNKEY"])
 		many2many := settings["MANY2MANY"]
+		polymorphic := SnakeToUpperCamel(settings["POLYMORPHIC"])
+
+		if polymorphic != "" {
+			foreignKey = polymorphic + "Id"
+			foreignType = polymorphic + "Type"
+		}
 
 		switch indirectValue.Kind() {
 		case reflect.Slice: // 字段是Slice
@@ -375,6 +392,7 @@ func (scope *Scope) fieldFromStruct(fieldStruct reflect.StructField, withRelatio
 				field.Relationship = &relationship{
 					JoinTable:             many2many,
 					ForeignKey:            foreignKey,
+					ForeignType:           foreignType,
 					AssociationForeignKey: associationForeignKey,
 					Kind: "has_many",
 				}
@@ -417,7 +435,7 @@ func (scope *Scope) fieldFromStruct(fieldStruct reflect.StructField, withRelatio
 					kind = "has_one"
 				}
 
-				field.Relationship = &relationship{ForeignKey: foreignKey, Kind: kind}
+				field.Relationship = &relationship{ForeignKey: foreignKey, ForeignType: foreignType, Kind: kind}
 			}
 		default:
 			field.IsNormal = true
@@ -428,10 +446,11 @@ func (scope *Scope) fieldFromStruct(fieldStruct reflect.StructField, withRelatio
 
 // Fields get value's fields
 func (scope *Scope) Fields(noRelations ...bool) map[string]*Field {
-	if scope.fields != nil {
+	var withRelation = len(noRelations) == 0
+
+	if withRelation && scope.fields != nil {
 		return scope.fields
 	}
-	var withRelation = len(noRelations) == 0
 
 	var fields = map[string]*Field{}
 	//

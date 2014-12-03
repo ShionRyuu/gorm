@@ -8,8 +8,8 @@ import (
 
 	_ "github.com/denisenkom/go-mssqldb"
 	testdb "github.com/erikstmartin/go-testdb"
-	"github.com/jinzhu/gorm"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/now"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
@@ -551,6 +551,21 @@ func TestCompatibilityMode(t *testing.T) {
 	DB.Find(&users)
 	if (users[0].Name != "Tim") || len(users) != 3 {
 		t.Errorf("Unexcepted result returned")
+	}
+}
+
+func TestOpenExistingDB(t *testing.T) {
+	DB.Save(&User{Name: "jnfeinstein"})
+	dialect := os.Getenv("GORM_DIALECT")
+
+	db, err := gorm.Open(dialect, DB.DB())
+	if err != nil {
+		t.Errorf("Should have wrapped the existing DB connection")
+	}
+
+	var user User
+	if db.Where("name = ?", "jnfeinstein").First(&user).Error == gorm.RecordNotFound {
+		t.Errorf("Should have found existing record")
 	}
 }
 
